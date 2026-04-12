@@ -17,6 +17,8 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 
 **Phase:** Design complete — ready to implement  
 **Last updated:** 2026-04-13  
+**Repo:** https://github.com/Tsuyii/scout  
+**Launch command:** `scout` (from any terminal)
 
 ---
 
@@ -34,6 +36,11 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 - **Contact finding:** Hunter.io for emails, LinkedIn search for profiles
 - **Fields targeted:** Software Engineering + Data Science / ML
 - **Platforms:** Email + LinkedIn DM
+
+#### Infrastructure Set Up
+- GitHub repo created: https://github.com/Tsuyii/scout (public)
+- `scout` alias added to `~/.bashrc` — type `scout` in any terminal to launch Claude Code in this project with auto-permissions
+- `.gitignore` configured (node_modules, .env, .next, .vercel, brainstorm state)
 
 #### Artifacts Created
 - `docs/superpowers/specs/2026-04-12-scout-design.md` — Full design spec (architecture, data model, UI flow, technical decisions, success criteria)
