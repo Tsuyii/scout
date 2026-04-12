@@ -1,0 +1,45 @@
+<h2>3 Architecture Approaches</h2>
+<p class="subtitle">How should InternshipHunter discover companies and find contacts?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Full AI Agent</h3>
+      <p>One autonomous agent browses the web freely — searches Google, scrapes job boards, finds LinkedIn profiles, discovers emails, and drafts messages. You give it a location + field and it does everything.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Most flexible & powerful</li><li>Can find obscure companies</li><li>Adapts intelligently</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Slowest (agent loops)</li><li>Most expensive (LLM calls)</li><li>Harder to control/debug</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Structured Pipeline</h3>
+      <p>Fixed steps: job board APIs (LinkedIn/Indeed) → contact APIs (Hunter.io/Apollo) → AI drafts. Each step is deterministic. Fast and cheap.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Fast & predictable</li><li>Cheap per run</li><li>Easy to debug</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Limited to what APIs surface</li><li>Misses cold outreach targets</li><li>API costs + rate limits</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid ⭐ Recommended</h3>
+      <p>Job board APIs for active hiring companies + AI agent for cold outreach discovery + AI drafting. Structured where structure works, intelligent where it needs to adapt.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Best of both worlds</li><li>Reliable + flexible</li><li>Covers active + cold targets</li><li>Cost-efficient</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More to build</li><li>Two discovery paths to maintain</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 24px; padding: 16px; background: rgba(99,102,241,0.1); border-radius: 8px; border-left: 3px solid #6366f1;">
+  <p class="label">Why C is recommended</p>
+  <p style="margin: 4px 0 0">Job boards catch companies <em>actively</em> hiring — highest conversion. The AI agent layer then discovers companies that aren't posting publicly (startups, research labs) for cold outreach. Best coverage, reasonable cost.</p>
+</div>

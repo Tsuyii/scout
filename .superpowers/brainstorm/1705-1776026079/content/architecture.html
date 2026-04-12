@@ -1,0 +1,86 @@
+<h2>System Architecture</h2>
+<p class="subtitle">How the pieces fit together end-to-end</p>
+
+<div style="display: flex; flex-direction: column; gap: 16px; margin-top: 8px;">
+
+  <!-- Row 1: Input -->
+  <div style="display: flex; gap: 12px; align-items: stretch;">
+    <div style="flex: 1; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); border-radius: 10px; padding: 16px;">
+      <p class="label" style="color: #818cf8;">Input</p>
+      <h3 style="margin: 4px 0 8px;">Your CV + Campaign Config</h3>
+      <ul style="margin: 0; padding-left: 18px; font-size: 14px; color: var(--text-secondary);">
+        <li>Upload PDF → AI extracts profile</li>
+        <li>Set location (city / country / remote)</li>
+        <li>Set field (SWE, DS/ML, or both)</li>
+        <li>Optional: paste company list</li>
+      </ul>
+    </div>
+    <div style="display: flex; align-items: center; font-size: 24px; color: var(--text-secondary);">→</div>
+    <div style="flex: 2; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; padding: 16px;">
+      <p class="label" style="color: #34d399;">Discovery Engine (Hybrid)</p>
+      <div style="display: flex; gap: 12px; margin-top: 8px;">
+        <div style="flex: 1; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px;">
+          <p style="margin: 0 0 6px; font-weight: 600; font-size: 13px;">🏢 Active Path</p>
+          <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Adzuna / SerpAPI scrape job boards for companies <em>actively</em> hiring interns in your field + location</p>
+        </div>
+        <div style="flex: 1; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px;">
+          <p style="margin: 0 0 6px; font-weight: 600; font-size: 13px;">🔍 Cold Path</p>
+          <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">AI agent searches web for relevant companies NOT actively posting — startups, labs, scale-ups</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Contact + Draft -->
+  <div style="display: flex; gap: 12px; align-items: stretch;">
+    <div style="flex: 1; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 16px;">
+      <p class="label" style="color: #fbbf24;">Contact Finder</p>
+      <h3 style="margin: 4px 0 8px;">Find the right person</h3>
+      <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary);">
+        <li>Recruiter/HR first (LinkedIn search)</li>
+        <li>Engineer/lead if no recruiter found</li>
+        <li>Email via Hunter.io API</li>
+        <li>LinkedIn profile URL</li>
+      </ul>
+    </div>
+    <div style="display: flex; align-items: center; font-size: 24px; color: var(--text-secondary);">→</div>
+    <div style="flex: 1; background: rgba(236,72,153,0.1); border: 1px solid rgba(236,72,153,0.3); border-radius: 10px; padding: 16px;">
+      <p class="label" style="color: #f472b6;">Draft Generator</p>
+      <h3 style="margin: 4px 0 8px;">AI writes per-contact</h3>
+      <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary);">
+        <li>Email: subject + body (formal)</li>
+        <li>LinkedIn DM (short, warm)</li>
+        <li>Tailored to company + role + your CV</li>
+        <li>Streams in real-time as it generates</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Row 3: Review UI -->
+  <div style="background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3); border-radius: 10px; padding: 16px;">
+    <p class="label" style="color: #a78bfa;">Review UI</p>
+    <div style="display: flex; gap: 16px; margin-top: 8px;">
+      <div style="flex: 1; font-size: 13px; color: var(--text-secondary);">
+        <strong style="color: var(--text-primary);">Campaign board</strong> — all discovered companies with status (draft ready / sent / skipped)
+      </div>
+      <div style="flex: 1; font-size: 13px; color: var(--text-secondary);">
+        <strong style="color: var(--text-primary);">Per-company panel</strong> — contact info, email draft, LinkedIn draft, edit inline or regenerate
+      </div>
+      <div style="flex: 1; font-size: 13px; color: var(--text-secondary);">
+        <strong style="color: var(--text-primary);">Send bar</strong> — select all / pick & choose → send via Gmail OAuth or copy LinkedIn DM
+      </div>
+    </div>
+  </div>
+
+  <!-- Stack -->
+  <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 14px; display: flex; gap: 24px; flex-wrap: wrap;">
+    <div><p class="label">Stack</p></div>
+    <div style="font-size: 13px;">⚡ <strong>Next.js 15</strong> App Router</div>
+    <div style="font-size: 13px;">🤖 <strong>Vercel AI SDK</strong> + Claude claude-sonnet-4-6</div>
+    <div style="font-size: 13px;">🗃️ <strong>Supabase</strong> (Postgres)</div>
+    <div style="font-size: 13px;">🎨 <strong>Tailwind</strong> + shadcn/ui</div>
+    <div style="font-size: 13px;">📧 <strong>Gmail OAuth</strong> for sending</div>
+    <div style="font-size: 13px;">🔍 <strong>Hunter.io</strong> email finder</div>
+    <div style="font-size: 13px;">🌐 <strong>Adzuna API</strong> job boards</div>
+  </div>
+</div>

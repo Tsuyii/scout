@@ -1,0 +1,3 @@
+{"type":"server-started","port":60455,"host":"0.0.0.0","url_host":"localhost","url":"http://localhost:60455","screen_dir":"/home/badr/internship-hunter/.superpowers/brainstorm/3855-1776031064/content","state_dir":"/home/badr/internship-hunter/.superpowers/brainstorm/3855-1776031064/state"}
+{"type":"screen-added","file":"/home/badr/internship-hunter/.superpowers/brainstorm/3855-1776031064/content/scout-ui.html"}
+{"type":"server-stopped","reason":"idle timeout"}
