@@ -26,12 +26,24 @@ function sseEvent(data: object): string {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
+type JobResult = { name: string; website: string | null; jobUrl: string; description: string };
+
+// ─── Jina Reader — free website scraper ───────────────────────────────────────
+
+async function jinaFetch(url: string): Promise<string> {
+  try {
+    const res = await fetch(`https://r.jina.ai/${url}`, {
+      headers: { Accept: "text/plain" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return "";
+    return (await res.text()).slice(0, 600);
+  } catch { return ""; }
+}
+
 // ─── Adzuna job board search ──────────────────────────────────────────────────
 
-async function searchAdzuna(
-  location: string,
-  field: string
-): Promise<Array<{ name: string; website: string | null; jobUrl: string; description: string }>> {
+async function searchAdzuna(location: string, field: string): Promise<JobResult[]> {
   const appId  = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_APP_KEY;
   if (!appId || !appKey) return [];
@@ -46,23 +58,72 @@ async function searchAdzuna(
     const json = await res.json() as {
       results?: Array<{ company: { display_name: string }; redirect_url: string; description: string }>;
     };
-
     const seen = new Set<string>();
-    return (json.results ?? []).reduce<Array<{ name: string; website: string | null; jobUrl: string; description: string }>>((acc, job) => {
+    return (json.results ?? []).reduce<JobResult[]>((acc, job) => {
       const name = job.company?.display_name;
       if (!name || seen.has(name)) return acc;
       seen.add(name);
-      acc.push({
-        name,
-        website: null,
-        jobUrl: job.redirect_url,
-        description: job.description?.slice(0, 200) ?? "",
-      });
+      acc.push({ name, website: null, jobUrl: job.redirect_url, description: job.description?.slice(0, 200) ?? "" });
       return acc;
     }, []);
-  } catch {
-    return [];
-  }
+  } catch { return []; }
+}
+
+// ─── Remotive — remote tech jobs, no key ─────────────────────────────────────
+
+async function searchRemotive(field: string): Promise<JobResult[]> {
+  try {
+    const category = field.toLowerCase().includes("data") || field.toLowerCase().includes("ml") ? "data" : "software-dev";
+    const res = await fetch(`https://remotive.com/api/remote-jobs?category=${category}&limit=30&search=intern`);
+    if (!res.ok) return [];
+    const json = await res.json() as { jobs?: Array<{ company_name: string; url: string; description: string }> };
+    const seen = new Set<string>();
+    return (json.jobs ?? []).reduce<JobResult[]>((acc, job) => {
+      if (!job.company_name || seen.has(job.company_name.toLowerCase())) return acc;
+      seen.add(job.company_name.toLowerCase());
+      acc.push({ name: job.company_name, website: null, jobUrl: job.url, description: job.description?.slice(0, 200) ?? "" });
+      return acc;
+    }, []);
+  } catch { return []; }
+}
+
+// ─── Arbeitnow — European jobs, no key ───────────────────────────────────────
+
+async function searchArbeitnow(field: string): Promise<JobResult[]> {
+  try {
+    const res = await fetch(`https://www.arbeitnow.com/api/job-board-api?tags[]=${encodeURIComponent(field)}&tags[]=intern`);
+    if (!res.ok) return [];
+    const json = await res.json() as { data?: Array<{ company_name: string; url: string; description: string }> };
+    const seen = new Set<string>();
+    return (json.data ?? []).reduce<JobResult[]>((acc, job) => {
+      if (!job.company_name || seen.has(job.company_name.toLowerCase())) return acc;
+      seen.add(job.company_name.toLowerCase());
+      acc.push({ name: job.company_name, website: null, jobUrl: job.url, description: job.description?.slice(0, 200) ?? "" });
+      return acc;
+    }, []);
+  } catch { return []; }
+}
+
+// ─── The Muse — tech job listings, no key ────────────────────────────────────
+
+async function searchTheMuse(field: string): Promise<JobResult[]> {
+  try {
+    const category = field.toLowerCase().includes("data") || field.toLowerCase().includes("ml")
+      ? "Data+Science" : "Software+Engineer";
+    const res = await fetch(`https://www.themuse.com/api/public/jobs?category=${category}&level=Internship&page=0&descending=true`);
+    if (!res.ok) return [];
+    const json = await res.json() as {
+      results?: Array<{ company: { name: string }; refs: { landing_page: string }; contents: string }>;
+    };
+    const seen = new Set<string>();
+    return (json.results ?? []).reduce<JobResult[]>((acc, job) => {
+      const name = job.company?.name;
+      if (!name || seen.has(name.toLowerCase())) return acc;
+      seen.add(name.toLowerCase());
+      acc.push({ name, website: null, jobUrl: job.refs?.landing_page ?? "", description: job.contents?.replace(/<[^>]+>/g, "").slice(0, 200) ?? "" });
+      return acc;
+    }, []);
+  } catch { return []; }
 }
 
 // ─── Hunter.io email finder ───────────────────────────────────────────────────
@@ -131,13 +192,19 @@ export async function POST(request: Request) {
         log(`Starting discovery for ${campaign.location} · ${campaign.fields.join(", ")}`, "info");
         log(`Mode: ${campaign.mode} · Target: ${target} companies`, "info");
 
-        // ── Tier 1: Active path — Adzuna job boards ────────────────────────
+        // ── Tier 1: Active path — all job boards ──────────────────────────
         if (found < target) {
-          log("Searching job boards (Adzuna)...", "info");
+          log("Searching job boards (Adzuna + Remotive + Arbeitnow + The Muse)...", "info");
           for (const field of campaign.fields) {
             if (found >= target) break;
-            const results = await searchAdzuna(campaign.location, field);
-            log(`Adzuna: ${results.length} results for "${field}"`, "info");
+            const [adzuna, remotive, arbeitnow, muse] = await Promise.all([
+              searchAdzuna(campaign.location, field),
+              searchRemotive(field),
+              searchArbeitnow(field),
+              searchTheMuse(field),
+            ]);
+            const results = [...adzuna, ...remotive, ...arbeitnow, ...muse];
+            log(`Job boards: ${results.length} results for "${field}" (Adzuna:${adzuna.length} Remotive:${remotive.length} Arbeitnow:${arbeitnow.length} Muse:${muse.length})`, "info");
 
             for (const job of results) {
               if (found >= target) break;
@@ -188,18 +255,36 @@ For each company found: search → extract → find contact → save. Stop after
                 description: "Search the web for companies",
                 inputSchema: webSearchParams,
                 execute: async ({ query }) => {
-                  const key = process.env.TAVILY_API_KEY;
-                  if (!key) { log("Tavily API key not set — skipping web search", "warn"); return { results: [] }; }
                   log(`Searching: "${query}"`, "info");
-                  try {
-                    const res = await fetch("https://api.tavily.com/search", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ api_key: key, query, max_results: 10 }),
-                    });
-                    if (!res.ok) return { results: [] };
-                    return res.json();
-                  } catch { return { results: [] }; }
+                  // Try Tavily first
+                  const tavilyKey = process.env.TAVILY_API_KEY;
+                  if (tavilyKey) {
+                    try {
+                      const res = await fetch("https://api.tavily.com/search", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ api_key: tavilyKey, query, max_results: 10 }),
+                      });
+                      if (res.ok) return res.json();
+                    } catch { /* fall through to Serper */ }
+                  }
+                  // Fallback: Serper
+                  const serperKey = process.env.SERPER_API_KEY;
+                  if (serperKey) {
+                    try {
+                      const res = await fetch("https://google.serper.dev/search", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "X-API-KEY": serperKey },
+                        body: JSON.stringify({ q: query, num: 10 }),
+                      });
+                      if (res.ok) {
+                        const data = await res.json() as { organic?: Array<{ title: string; link: string; snippet: string }> };
+                        return { results: (data.organic ?? []).map((r) => ({ title: r.title, url: r.link, content: r.snippet })) };
+                      }
+                    } catch { /* give up */ }
+                  }
+                  log("No search API key set (TAVILY_API_KEY or SERPER_API_KEY)", "warn");
+                  return { results: [] };
                 },
               }),
 
@@ -238,9 +323,16 @@ For each company found: search → extract → find contact → save. Stop after
                   if (seenNames.has(name.toLowerCase())) return { saved: false, reason: "duplicate" };
                   seenNames.add(name.toLowerCase());
 
+                  // Enrich description from website via Jina if not provided
+                  let enrichedDescription = description ?? null;
+                  if (!enrichedDescription && website) {
+                    const scraped = await jinaFetch(website);
+                    if (scraped) enrichedDescription = scraped;
+                  }
+
                   const { data: company } = await supabase
                     .from("companies")
-                    .insert({ campaign_id: campaignId, name, website: website ?? null, description: description ?? null, location: campaign.location, source: "cold_search" })
+                    .insert({ campaign_id: campaignId, name, website: website ?? null, description: enrichedDescription, location: campaign.location, source: "cold_search" })
                     .select()
                     .single();
 
