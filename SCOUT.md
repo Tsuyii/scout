@@ -15,7 +15,7 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 
 ## Current Status
 
-**Phase:** Design complete — ready to implement  
+**Phase:** Phase 1 complete — scaffold, auth, profile  
 **Last updated:** 2026-04-13  
 **Repo:** https://github.com/Tsuyii/scout  
 **Launch command:** `scout` (from any terminal)
@@ -23,6 +23,25 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 ---
 
 ## What's Been Done
+
+### Session 2 — 2026-04-13 (Phase 1 Implementation)
+
+#### Built
+- **Next.js 16 scaffold** with TypeScript, Tailwind v4, App Router, shadcn/ui
+- **Neon Protocol theme** — `#06060b` bg, `#00ff88` accent, Syne + JetBrains Mono, animated grid overlay, glow utilities, terminal cursor CSS
+- **Supabase auth** — browser/server/proxy clients with `@supabase/ssr`, `src/proxy.ts` (Next.js 16 renamed middleware)
+- **Auth pages** — `/login`, `/signup` with dark terminal styling
+- **App layout** — sidebar nav with SCOUT logo, profile + campaigns links, sign out
+- **Profile page** — CV drag-and-drop upload (PDF/DOC/DOCX), AI extraction via Claude + AI SDK v6, skill tags, editable form, Supabase upsert
+- **CV extraction API** — `POST /api/extract-cv`, uploads to Supabase Storage, extracts structured profile via `generateText + Output.object()` (AI SDK v6 pattern)
+- **Database types** — full TypeScript types for all 5 tables with `Relationships[]` for Supabase compat
+- **`.env.local.example`** — all required keys documented
+
+#### Key technical discoveries
+- Next.js 16: `middleware.ts` renamed to `proxy.ts`, export `proxy()` not `middleware()`
+- AI SDK v6: `generateObject` removed — use `generateText` with `output: Output.object({ schema })`
+- Supabase Database types require `Relationships: GenericRelationship[]` on each table
+- Supabase env var: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (not anon key)
 
 ### Session 1 — 2026-04-13
 
@@ -141,8 +160,8 @@ Tavily API (AI web search)
 
 ## What's Next
 
-- [ ] Write implementation plan (phased, with tasks)
-- [ ] Phase 1: Project scaffold + auth + profile/CV upload
+- [x] Phase 1: Project scaffold + auth + profile/CV upload
+- [ ] **Create Supabase project + run migrations** (tables: users, campaigns, companies, contacts, messages)
 - [ ] Phase 2: Campaign creation + Adzuna job board integration
 - [ ] Phase 3: Cold discovery AI agent (Claude + Tavily)
 - [ ] Phase 4: Contact finder (LinkedIn search + Hunter.io)
