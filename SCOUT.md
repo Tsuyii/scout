@@ -15,7 +15,7 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 
 ## Current Status
 
-**Phase:** Phase 1 complete — scaffold, auth, profile  
+**Phase:** Phase 2–7 complete — full app built, needs API keys to run  
 **Last updated:** 2026-04-13  
 **Repo:** https://github.com/Tsuyii/scout  
 **Launch command:** `scout` (from any terminal)
@@ -186,14 +186,21 @@ Tavily API (AI web search)
 ## What's Next
 
 - [x] Phase 1: Project scaffold + auth + profile/CV upload
-- [ ] **Create Supabase project + run migrations** (tables: users, campaigns, companies, contacts, messages)
-- [ ] Phase 2: Campaign creation + Adzuna job board integration
-- [ ] Phase 3: Cold discovery AI agent (Claude + Tavily)
-- [ ] Phase 4: Contact finder (LinkedIn search + Hunter.io)
-- [ ] Phase 5: Draft generator (Claude, email + LinkedIn)
-- [ ] Phase 6: Review & Send UI (Design 1 applied)
-- [ ] Phase 7: Gmail OAuth send integration
-- [ ] Phase 8: Polish, error handling, deploy to Vercel
+- [x] Supabase migration SQL (`supabase/migrations/001_initial.sql`) — run in Supabase SQL editor
+- [x] Phase 2: Campaign creation UI + Adzuna job board integration (`/api/campaigns`, `/campaigns/new`)
+- [x] Phase 3: Cold discovery AI agent — `streamText` + tools (webSearch, findContact, saveCompany) in `/api/discover`
+- [x] Phase 4: Contact finder — Hunter.io in `/api/contacts/find` + embedded in discovery agent
+- [x] Phase 5: Draft generator — `generateText + Output.object()` for email + LinkedIn DM in `/api/draft`
+- [x] Phase 6: Review & Send UI — full left/right layout, edit/regen/send, bulk send bar
+- [x] Phase 7: Gmail OAuth send integration — Nodemailer + token refresh in `/api/send-email`
+- [ ] Phase 8: Wire up API keys + deploy to Vercel
+
+#### Key technical discoveries (Session 2)
+- AI SDK v6: `tool()` uses `inputSchema` not `parameters` — must define schemas at module level for TS inference
+- AI SDK v6: `streamText` fullStream chunk is `chunk.text` not `chunk.textDelta`
+- AI SDK v6: `stopWhen: stepCountIs(N)` replaces removed `maxSteps`
+- Supabase nested joins (`.select("*, table!inner(*)")`) return `never` in TS — cast with `as unknown as TypedArray`
+- lucide-react: no `Linkedin` icon — use `Link2` instead
 
 ---
 
