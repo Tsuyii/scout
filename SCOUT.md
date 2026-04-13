@@ -15,7 +15,7 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 
 ## Current Status
 
-**Phase:** Phase 2–7 complete — full app built, needs API keys to run  
+**Phase:** Full app built (Phases 1–7) — needs API keys + Supabase project to run  
 **Last updated:** 2026-04-13  
 **Repo:** https://github.com/Tsuyii/scout  
 **Launch command:** `scout` (from any terminal)
@@ -23,6 +23,34 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 ---
 
 ## What's Been Done
+
+### Session 3 — 2026-04-13 (Phases 2–7: Full App)
+
+#### Built
+- **Supabase migration** — `supabase/migrations/001_initial.sql`: all 5 tables, RLS policies, storage bucket (paste into Supabase SQL editor to set up)
+- **Campaigns list page** — `/campaigns`: lists all campaigns with status badges (running/complete/paused), links to discover or review
+- **New campaign page** — `/campaigns/new` + `CampaignForm` component: location, field chips, language chips, mode toggle (active/hybrid), count slider, manual companies textarea
+- **Campaign redirect** — `/campaigns/[id]` redirects to `/discover` if running, `/review` if complete
+- **Discovery page** — `/campaigns/[id]/discover` + `DiscoveryTerminal` component: SSE streaming terminal log, company cards animate in, progress bar, stats (found/drafts/elapsed/%), done CTA
+- **Review & Send page** — `/campaigns/[id]/review` + `ReviewPanel` component: company list (left) with checkboxes + status, contact card + Email/LinkedIn tabs + editable draft (right), save/regenerate/send buttons, bulk send bar
+- **API: `POST /api/campaigns`** — create campaign, pre-populate manual companies
+- **API: `GET+PATCH /api/campaigns/[id]`** — fetch full campaign tree, update status
+- **API: `POST /api/discover`** — full SSE streaming discovery agent: Adzuna job boards (active path) + Claude `streamText` agent loop with `webSearch`/`findContact`/`saveCompany` tools (cold path) + Hunter.io email finder + `generateText + Output.object()` draft generation for all contacts
+- **API: `POST /api/draft`** — regenerate a single draft on demand (email or LinkedIn DM)
+- **API: `POST /api/contacts/find`** — Hunter.io email lookup for a specific contact
+- **API: `POST /api/send-email`** — Gmail OAuth send via Nodemailer with access token auto-refresh
+- **API: `PATCH /api/messages/[id]`** — save edited subject/body
+
+#### Key technical discoveries (Session 3)
+- AI SDK v6: `tool()` uses `inputSchema` not `parameters` — must define zod schemas at **module level** (not inline) for TypeScript to infer execute param types
+- AI SDK v6: `streamText` fullStream chunk is `chunk.text` not `chunk.textDelta`
+- AI SDK v6: `stopWhen: stepCountIs(N)` replaces removed `maxSteps`
+- Supabase nested joins (`.select("*, table!inner(*)")`) return `never` type in TS — cast with `as unknown as YourType[]`
+- Claude model slug: use dots not hyphens — `claude-sonnet-4.6` not `claude-sonnet-4-6`
+- lucide-react: no `Linkedin` icon — use `Link2` instead
+- Don't call `setState` during render body — use `useEffect` with dependency on message ID
+
+---
 
 ### Session 2 — 2026-04-13 (Research + Plan + Phase 1 Implementation)
 
