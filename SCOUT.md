@@ -24,7 +24,12 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 
 ## What's Been Done
 
-### Session 2 — 2026-04-13 (Phase 1 Implementation)
+### Session 2 — 2026-04-13 (Research + Plan + Phase 1 Implementation)
+
+#### Researched
+- Web-searched internship hunting strategies for Moroccan SWE students (Reddit, LinkedIn, job boards)
+- **Key insight:** Remote internships at French startups (Welcome to the Jungle, LinkedIn cold DM to founders) are highest-conversion path — timezone aligned, language advantage, no visa needed
+- **Ultraplan approved:** Multi-tier scraper architecture (LinkedIn, WTTJ, YC Jobs, Adzuna, Glassdoor, Bayt, Reddit, HN, GitHub lists, Twitter/X) + multi-language queries (EN/FR/ES) + founder-first contact strategy
 
 #### Built
 - **Next.js 16 scaffold** with TypeScript, Tailwind v4, App Router, shadcn/ui
@@ -49,7 +54,7 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 - **App name:** SCOUT
 - **Visual design:** Dark terminal aesthetic (Design 1 — "Neon Protocol" from Stitch). Black `#06060b` background, electric green `#00ff88` accent, Syne + JetBrains Mono fonts, animated grid, neon glows.
 - **Architecture:** Hybrid discovery — Adzuna job boards (active hiring) + Claude AI agent with Tavily search (cold outreach)
-- **Stack:** Next.js 15 (App Router) + Vercel AI SDK + Claude claude-sonnet-4-6 + Supabase + Tailwind + shadcn/ui
+- **Stack:** Next.js 16 (App Router) + Vercel AI SDK v6 + Claude claude-sonnet-4-6 + Supabase + Tailwind v4 + shadcn/ui
 - **Email sending:** Gmail OAuth via Nodemailer (no manual SMTP)
 - **LinkedIn:** Copy-to-clipboard + open profile (LinkedIn blocks API automation)
 - **Contact finding:** Hunter.io for emails, LinkedIn search for profiles
@@ -79,22 +84,38 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 ```
 CV Upload → Profile (extracted by AI)
               ↓
-         New Campaign (location + field + count)
+         New Campaign (location + field + languages + count)
               ↓
-    ┌─── Active Path ────┐    ┌─── Cold Path ─────┐
-    │  Adzuna Job Boards  │    │  Claude AI Agent   │
-    │  (actively hiring)  │    │  + Tavily Search   │
-    └────────┬────────────┘    └────────┬───────────┘
-             └──────────┬──────────────┘
-                        ↓
-              Contact Finder
-         (LinkedIn search → Hunter.io email)
-                        ↓
-              Draft Generator
-         (Claude: email subject+body, LinkedIn DM)
-                        ↓
-              Review & Send UI
-         (per-company, edit/regen/send, bulk send)
+    ┌──── Tier 1: High-Yield ────┐
+    │  LinkedIn Jobs + Profiles   │
+    │  Welcome to the Jungle      │  ← best for French startups
+    │  YC Jobs (workatastartup)   │
+    └────────────┬────────────────┘
+    ┌──── Tier 2: Volume ────────┐
+    │  Adzuna API (job boards)    │
+    │  Glassdoor scraper          │
+    │  Bayt (MENA coverage)       │
+    │  Claude + Tavily (cold AI)  │
+    └────────────┬────────────────┘
+    ┌──── Tier 3: Community ─────┐
+    │  Reddit (r/internships etc) │
+    │  Hacker News "Who's Hiring" │
+    │  GitHub curated lists       │
+    │  Twitter/X search           │
+    └────────────┬────────────────┘
+                 ↓
+         Dedup + Rank (by source count + recency)
+                 ↓
+    Contact Finder — founder/CTO first strategy
+    (LinkedIn search → Hunter.io → Apollo.io fallback)
+                 ↓
+    Draft Generator (Claude)
+    Email: <150 words, name-drop product, link GitHub, ask for 15-min call
+    LinkedIn DM: 3 lines max — compliment / intro / ask
+    Multi-language: EN for global, FR for French startups, ES for Spanish
+                 ↓
+    Review & Send UI
+    (per-company, edit/regen/send, bulk send)
 ```
 
 ---
@@ -103,8 +124,8 @@ CV Upload → Profile (extracted by AI)
 
 | Table | Key Fields |
 |---|---|
-| `users` | id, email, name, skills[], education, experience, availability, cv_url, gmail_token |
-| `campaigns` | id, user_id, location, fields[], mode, target_count, status |
+| `users` | id, email, name, skills[], education, experience, availability, cv_url, gmail_token, languages[] |
+| `campaigns` | id, user_id, location, fields[], languages[], mode, target_count, status |
 | `companies` | id, campaign_id, name, website, source (job_board/cold_search) |
 | `contacts` | id, company_id, name, role, email, linkedin_url, confidence_score, type |
 | `messages` | id, campaign_id, contact_id, platform, subject, body, status, sent_at |
@@ -123,8 +144,8 @@ CV Upload → Profile (extracted by AI)
 ## Tech Stack
 
 ```
-Next.js 15 (App Router)
-Vercel AI SDK + Claude claude-sonnet-4-6
+Next.js 16 (App Router)
+Vercel AI SDK v6 + Claude claude-sonnet-4-6
 Supabase (PostgreSQL + Storage + Auth)
 Tailwind CSS + shadcn/ui
 Gmail OAuth / Nodemailer
@@ -141,9 +162,13 @@ Tavily API (AI web search)
 |---|---|---|
 | LinkedIn sending | Copy + open profile | LinkedIn API bans programmatic DM sending |
 | Discovery streaming | Next.js Route Handler + SSE | Long-running (30–120s), needs real-time UI |
-| Email finding | Hunter.io | Best free-tier option, 25 req/month free |
+| Email finding | Hunter.io → Apollo.io fallback | Hunter free tier (25/mo), Apollo as fallback |
 | Cold discovery | Claude agent + Tavily | Flexible, adapts to any location/field |
 | Auth | Supabase Auth | Handles Gmail OAuth refresh tokens cleanly |
+| Contact priority | Founder > CTO > Engineer > Recruiter | Startups 10–100 employees → reach decision-maker directly |
+| Draft language | Match company's primary language | FR for French startups = higher response rate |
+| Next.js proxy | `src/proxy.ts` (not middleware.ts) | Next.js 16 renamed middleware to proxy |
+| AI SDK structured output | `generateText + Output.object()` | `generateObject` removed in AI SDK v6 |
 
 ---
 
