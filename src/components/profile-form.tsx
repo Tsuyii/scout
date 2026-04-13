@@ -26,6 +26,12 @@ export function ProfileForm({ user, initialProfile }: ProfileFormProps) {
   const [experience, setExperience] = useState(initialProfile?.experience ?? "");
   const [availability, setAvailability] = useState(initialProfile?.availability ?? "");
   const [cvUrl, setCvUrl] = useState<string | null>(initialProfile?.cv_url ?? null);
+  const [gmailAppPassword, setGmailAppPassword] = useState<string>(() => {
+    try {
+      const t = initialProfile?.gmail_token ? JSON.parse(initialProfile.gmail_token) as { app_password?: string } : null;
+      return t?.app_password ?? "";
+    } catch { return ""; }
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -52,6 +58,7 @@ export function ProfileForm({ user, initialProfile }: ProfileFormProps) {
       experience,
       availability,
       cv_url: cvUrl,
+      gmail_token: gmailAppPassword ? JSON.stringify({ app_password: gmailAppPassword }) : null,
       updated_at: new Date().toISOString(),
     });
 
@@ -147,6 +154,32 @@ export function ProfileForm({ user, initialProfile }: ProfileFormProps) {
               className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30 resize-none"
             />
           </div>
+        </div>
+      </section>
+
+      <Separator className="bg-border" />
+
+      {/* Gmail */}
+      <section>
+        <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-4">
+          <span className="text-neon">05</span> — Gmail
+        </h2>
+        <div className="space-y-2">
+          <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
+            App Password
+          </Label>
+          <Input
+            type="password"
+            value={gmailAppPassword}
+            onChange={(e) => setGmailAppPassword(e.target.value)}
+            placeholder="xxxx xxxx xxxx xxxx"
+            className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30"
+          />
+          <p className="text-xs font-mono text-muted-foreground">
+            Generate at{" "}
+            <span className="text-neon">myaccount.google.com → Security → App Passwords</span>
+            {" "}(requires 2FA). Used to send emails from your Gmail account.
+          </p>
         </div>
       </section>
 

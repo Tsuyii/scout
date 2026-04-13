@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateText, Output } from "ai";
+import { generateText, Output, type FilePart, type TextPart } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -45,24 +45,28 @@ export async function POST(request: Request) {
 
   const { data: { publicUrl } } = supabase.storage.from("cvs").getPublicUrl(fileName);
 
-  // Extract text from file for Claude
-  // For PDFs and DOCs we pass the raw text. Claude handles plain text best.
-  // In production, add pdf-parse or mammoth for better extraction.
-  let cvText = "";
-  try {
-    cvText = await file.text();
-  } catch {
-    cvText = `File: ${file.name} (${file.type})`;
+  // Pass PDFs directly to Claude (native PDF support); fall back to text for other formats.
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+  let userContent: Array<TextPart | FilePart>;
+
+  if (isPdf) {
+    userContent = [
+      { type: "file", data: fileBuffer, mediaType: "application/pdf" } satisfies FilePart,
+      { type: "text", text: "Extract the candidate's profile from this CV/resume. Be concise — skills as a list of keywords, education and experience as 1-3 sentence summaries." } satisfies TextPart,
+    ];
+  } else {
+    let cvText = "";
+    try { cvText = await file.text(); } catch { cvText = `File: ${file.name}`; }
+    userContent = [
+      { type: "text", text: `Extract the candidate's profile from this CV/resume text.\nBe concise — skills as a list of keywords, education and experience as 1-3 sentence summaries.\n\nCV content:\n${cvText.slice(0, 8000)}` } satisfies TextPart,
+    ];
   }
 
   const { output: profile } = await generateText({
-    model: anthropic("claude-sonnet-4-6"),
+    model: anthropic("claude-sonnet-4.6"),
     output: Output.object({ schema: profileSchema }),
-    prompt: `Extract the candidate's profile from this CV/resume text.
-Be concise — skills as a list of keywords, education and experience as 1-3 sentence summaries.
-
-CV content:
-${cvText.slice(0, 8000)}`,
+    messages: [{ role: "user", content: userContent }],
   });
 
   return NextResponse.json({ url: publicUrl, profile });

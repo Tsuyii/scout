@@ -29,53 +29,62 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gmail not connected — add your Gmail OAuth token in Profile" }, { status: 400 });
   }
 
-  let tokenData: { access_token: string; refresh_token?: string };
+  let tokenData: { app_password?: string; access_token?: string; refresh_token?: string };
   try {
-    tokenData = JSON.parse(profile.gmail_token) as { access_token: string; refresh_token?: string };
+    tokenData = JSON.parse(profile.gmail_token) as typeof tokenData;
   } catch {
     return NextResponse.json({ error: "Invalid Gmail token format" }, { status: 400 });
   }
 
-  // Refresh access token if needed
-  let accessToken = tokenData.access_token;
-  if (tokenData.refresh_token && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    try {
-      const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id:     process.env.GOOGLE_CLIENT_ID,
-          client_secret: process.env.GOOGLE_CLIENT_SECRET,
-          refresh_token: tokenData.refresh_token,
-          grant_type:    "refresh_token",
-        }),
-      });
-      if (refreshRes.ok) {
-        const refreshed = await refreshRes.json() as { access_token?: string };
-        if (refreshed.access_token) {
-          accessToken = refreshed.access_token;
-          // Persist refreshed token
-          await supabase
-            .from("users")
-            .update({ gmail_token: JSON.stringify({ ...tokenData, access_token: accessToken }) })
-            .eq("id", user.id);
-        }
-      }
-    } catch { /* use existing token */ }
-  }
+  let transporter: ReturnType<typeof nodemailer.createTransport>;
 
-  // Send via Gmail SMTP with OAuth2
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      type:         "OAuth2",
-      user:         profile.email,
-      accessToken,
-      clientId:     process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      refreshToken: tokenData.refresh_token,
-    },
-  });
+  if (tokenData.app_password) {
+    // App Password SMTP (recommended — no OAuth setup needed)
+    transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: { user: profile.email, pass: tokenData.app_password },
+    });
+  } else if (tokenData.access_token) {
+    // OAuth2 fallback
+    let accessToken = tokenData.access_token;
+    if (tokenData.refresh_token && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      try {
+        const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id:     process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            refresh_token: tokenData.refresh_token,
+            grant_type:    "refresh_token",
+          }),
+        });
+        if (refreshRes.ok) {
+          const refreshed = await refreshRes.json() as { access_token?: string };
+          if (refreshed.access_token) {
+            accessToken = refreshed.access_token;
+            await supabase
+              .from("users")
+              .update({ gmail_token: JSON.stringify({ ...tokenData, access_token: accessToken }) })
+              .eq("id", user.id);
+          }
+        }
+      } catch { /* use existing token */ }
+    }
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2", user: profile.email, accessToken,
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        refreshToken: tokenData.refresh_token,
+      },
+    });
+  } else {
+    return NextResponse.json({ error: "Gmail not connected — add your App Password in Profile" }, { status: 400 });
+  }
 
   try {
     await transporter.sendMail({
