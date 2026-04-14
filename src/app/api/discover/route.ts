@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { streamText, generateText, Output, tool, stepCountIs } from "ai";
+import { streamText, generateText, tool, stepCountIs } from "ai";
 import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
 
@@ -397,17 +397,18 @@ For each company found: search → extract → find contact → save. Stop after
 
               // Email draft
               try {
-                const { output: emailDraft } = await generateText({
+                const { text: emailText } = await generateText({
                   model:  groq("llama-3.3-70b-versatile"),
-                  output: Output.object({ schema: emailDraftSchema }),
                   prompt: `Write a cold internship email in ${langLabel}. Max 150 words. Sound human, not template-like.
 
 From: ${profile.name ?? "CS student"}, skills: ${profile.skills?.join(", ") ?? ""}, available: ${profile.availability ?? "open"}
 To: ${contact.name ?? "the team"} (${contact.role ?? contact.type}) at ${company.name}
 Context: ${company.description?.slice(0, 100) ?? "tech company"}
 
-Return JSON: {"subject": "...", "body": "..."}`,
+Return ONLY a JSON object: {"subject": "...", "body": "..."}`,
                 });
+                const emailMatch = emailText.match(/\{[\s\S]*\}/);
+                const emailDraft = emailMatch ? JSON.parse(emailMatch[0]) as { subject: string; body: string } : null;
 
                 if (emailDraft) {
                   const { data: message } = await supabase
@@ -421,16 +422,17 @@ Return JSON: {"subject": "...", "body": "..."}`,
 
               // LinkedIn DM
               try {
-                const { output: dmDraft } = await generateText({
+                const { text: dmText } = await generateText({
                   model:  groq("llama-3.3-70b-versatile"),
-                  output: Output.object({ schema: dmDraftSchema }),
                   prompt: `Write a LinkedIn DM in ${langLabel}. Max 300 chars, 3 sentences. Compliment / intro / ask.
 
 From: ${profile.name ?? "CS student"} looking for ${campaign.fields.join("/")} internship
 To: ${contact.name ?? "someone"} at ${company.name}
 
-Return JSON: {"body": "..."}`,
+Return ONLY a JSON object: {"body": "..."}`,
                 });
+                const dmMatch = dmText.match(/\{[\s\S]*\}/);
+                const dmDraft = dmMatch ? JSON.parse(dmMatch[0]) as { body: string } : null;
 
                 if (dmDraft) {
                   const { data: message } = await supabase

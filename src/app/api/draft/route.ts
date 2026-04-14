@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { groq } from "@ai-sdk/groq";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-
-const emailSchema = z.object({ subject: z.string(), body: z.string() });
-const dmSchema    = z.object({ body: z.string().max(300) });
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -47,9 +43,8 @@ export async function POST(request: Request) {
   let body: string;
 
   if (platform === "email") {
-    const { output } = await generateText({
+    const { text } = await generateText({
       model:  groq("llama-3.3-70b-versatile"),
-      output: Output.object({ schema: emailSchema }),
       prompt: `Write a cold internship email in ${langLabel}. Max 150 words. Sound human, not template-like.
 
 From: ${profile?.name ?? "CS student"}, skills: ${profile?.skills?.join(", ") ?? ""}, available: ${profile?.availability ?? "open"}
@@ -57,23 +52,25 @@ To: ${contact.name ?? "the team"} (${contact.role ?? contact.type}) at ${company
 Context: ${company?.description?.slice(0, 100) ?? "tech company"}
 ${regenerate ? "\nThis is a regeneration — vary the angle and opening." : ""}
 
-Return JSON: {"subject": "...", "body": "..."}`,
+Return ONLY a JSON object: {"subject": "...", "body": "..."}`,
     });
-    subject = output?.subject ?? null;
-    body    = output?.body ?? "Draft generation failed.";
+    const match = text.match(/\{[\s\S]*\}/);
+    const parsed = match ? JSON.parse(match[0]) as { subject: string; body: string } : null;
+    subject = parsed?.subject ?? null;
+    body    = parsed?.body ?? "Draft generation failed.";
   } else {
-    const { output } = await generateText({
+    const { text } = await generateText({
       model:  groq("llama-3.3-70b-versatile"),
-      output: Output.object({ schema: dmSchema }),
       prompt: `Write a LinkedIn DM in ${langLabel}. Max 300 chars, 3 sentences: compliment / intro / ask.
 
 From: ${profile?.name ?? "CS student"} looking for ${campaign?.fields?.join("/") ?? "SWE"} internship
 To: ${contact.name ?? "someone"} at ${company?.name ?? "the company"}
 ${regenerate ? "\nThis is a regeneration — vary the tone." : ""}
 
-Return JSON: {"body": "..."}`,
+Return ONLY a JSON object: {"body": "..."}`,
     });
-    body = output?.body ?? "Draft generation failed.";
+    const match = text.match(/\{[\s\S]*\}/);
+    body = (match ? JSON.parse(match[0]) as { body: string } : null)?.body ?? "Draft generation failed.";
   }
 
   // Upsert message

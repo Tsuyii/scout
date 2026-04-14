@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -66,12 +66,12 @@ export async function POST(request: Request) {
 
   let profile;
   try {
-    const result = await generateText({
+    const { text } = await generateText({
       model: groq("llama-3.3-70b-versatile"),
-      output: Output.object({ schema: profileSchema }),
-      messages: [{ role: "user", content: `Extract the candidate's profile from this CV/resume text.\nBe concise — skills as a list of keywords, education and experience as 1-3 sentence summaries.\n\nCV content:\n${cvText}` }],
+      prompt: `Extract the candidate's profile from this CV/resume text. Return ONLY a JSON object with these fields: name (string), skills (array of strings), education (string), experience (string), availability (string). No markdown, no explanation, just JSON.\n\nCV content:\n${cvText}`,
     });
-    profile = result.output;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    profile = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
   } catch (err) {
     return NextResponse.json({ error: `AI extraction failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 });
   }
