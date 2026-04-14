@@ -15,14 +15,43 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 
 ## Current Status
 
-**Phase:** Full app built (Phases 1–7) — needs API keys + Supabase project to run  
-**Last updated:** 2026-04-13  
+**Phase:** Deployed to Vercel — blocked on Gemini free tier quota (regional issue)  
+**Last updated:** 2026-04-14  
 **Repo:** https://github.com/Tsuyii/scout  
 **Launch command:** `scout` (from any terminal)
 
 ---
 
 ## What's Been Done
+
+### Session 4 — 2026-04-14 (Deploy + Fixes)
+
+#### Done
+- Fixed PDF parser: `file.text()` → `FilePart` passed directly to AI model (native PDF support)
+- Fixed Gmail: replaced missing OAuth flow with App Password SMTP — added section 05 in Profile form
+- Fixed model slug: `claude-sonnet-4-6` → `claude-sonnet-4.6` (then swapped to Gemini)
+- Added 3 no-key job boards: Remotive, Arbeitnow, The Muse (run in parallel with Adzuna)
+- Added Serper.dev as Tavily fallback in webSearch tool
+- Added Jina Reader for website enrichment in saveCompany (free, no key needed)
+- Swapped Anthropic → Google Gemini (`@ai-sdk/google`, `gemini-2.0-flash`)
+- Created Supabase project `scout` (id: `ygtgqnrwtxtxmbroazes`, region: eu-west-1)
+- Ran full DB migration via MCP (all 5 tables + RLS + CVs storage bucket)
+- Added all env vars to Vercel: Supabase URL, publishable key, anon key, service role key, Gemini key, Serper key
+- Deployed to production: https://internship-hunter-three.vercel.app
+
+#### Blocker
+- Gemini free tier quota = 0 (`limit: 0`) — likely a regional restriction (Morocco)
+- Both AI Studio keys tried, both fail with same error
+- **Fix next session: swap to Groq** (`@ai-sdk/groq`, `llama-3.3-70b-versatile`) — free, 14,400 req/day, no regional restrictions
+- Groq doesn't support PDF FilePart — need to handle PDFs via text extraction fallback for extract-cv
+
+#### Key technical discoveries (Session 4)
+- Gemini free tier not available in all regions — `limit: 0` means regional block, not just quota exhaustion
+- New Supabase publishable key format: `sb_publishable_...` (works with `@supabase/ssr@0.10.2`)
+- New Supabase secret key format: `sb_secret_...` (use as `SUPABASE_SERVICE_ROLE_KEY`)
+- Vercel CLI non-interactive env add: `echo "value" | vercel env add KEY production --yes`
+
+---
 
 ### Session 3 — 2026-04-13 (Phases 2–7: Full App)
 
@@ -221,7 +250,8 @@ Tavily API (AI web search)
 - [x] Phase 5: Draft generator — `generateText + Output.object()` for email + LinkedIn DM in `/api/draft`
 - [x] Phase 6: Review & Send UI — full left/right layout, edit/regen/send, bulk send bar
 - [x] Phase 7: Gmail OAuth send integration — Nodemailer + token refresh in `/api/send-email`
-- [ ] Phase 8: Wire up API keys + deploy to Vercel
+- [x] Phase 8: Wire up API keys + deploy to Vercel (https://internship-hunter-three.vercel.app)
+- [ ] Phase 9: Fix AI provider — swap Gemini → Groq (Gemini free tier quota = 0, likely regional restriction)
 
 #### Key technical discoveries (Session 2)
 - AI SDK v6: `tool()` uses `inputSchema` not `parameters` — must define schemas at module level for TS inference
