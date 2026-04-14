@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { streamText, generateText, Output, tool, stepCountIs } from "ai";
-import { google } from "@ai-sdk/google";
+import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
 
 export const maxDuration = 300; // 5 min — long-running discovery
@@ -234,7 +234,7 @@ export async function POST(request: Request) {
         }
 
         // ── Tier 2: Cold path — Claude AI agent with Tavily ────────────────
-        if (campaign.mode === "hybrid" && found < target && process.env.ANTHROPIC_API_KEY) {
+        if (campaign.mode === "hybrid" && found < target && process.env.GROQ_API_KEY) {
           log("Switching to AI cold search (Claude + Tavily)...", "info");
           const remaining = target - found;
 
@@ -243,7 +243,7 @@ export async function POST(request: Request) {
             : "Candidate: CS/ML student looking for internship";
 
           const { fullStream } = streamText({
-            model: google("gemini-2.0-flash"),
+            model: groq("llama-3.3-70b-versatile"),
             stopWhen: stepCountIs(50),
             system: `You are an internship discovery agent. Your job is to find ${remaining} companies in ${campaign.location} that would be good targets for a ${campaign.fields.join("/")} internship.
 ${profileContext}
@@ -378,7 +378,7 @@ For each company found: search → extract → find contact → save. Stop after
         }
 
         // ── Generate drafts for all contacts ──────────────────────────────
-        if (profile && process.env.ANTHROPIC_API_KEY) {
+        if (profile && process.env.GROQ_API_KEY) {
           log("Generating outreach drafts...", "info");
 
           type ContactRow = { id: string; name: string | null; role: string | null; type: "founder" | "cto" | "engineer" | "recruiter"; companies: { name: string; website: string | null; description: string | null } | null };
@@ -398,7 +398,7 @@ For each company found: search → extract → find contact → save. Stop after
               // Email draft
               try {
                 const { output: emailDraft } = await generateText({
-                  model:  google("gemini-2.0-flash"),
+                  model:  groq("llama-3.3-70b-versatile"),
                   output: Output.object({ schema: emailDraftSchema }),
                   prompt: `Write a cold internship email in ${langLabel}. Max 150 words. Sound human, not template-like.
 
@@ -422,7 +422,7 @@ Return JSON: {"subject": "...", "body": "..."}`,
               // LinkedIn DM
               try {
                 const { output: dmDraft } = await generateText({
-                  model:  google("gemini-2.0-flash"),
+                  model:  groq("llama-3.3-70b-versatile"),
                   output: Output.object({ schema: dmDraftSchema }),
                   prompt: `Write a LinkedIn DM in ${langLabel}. Max 300 chars, 3 sentences. Compliment / intro / ask.
 
@@ -443,8 +443,8 @@ Return JSON: {"body": "..."}`,
               } catch { log(`LinkedIn draft failed for ${company.name}`, "warn"); }
             }
           }
-        } else if (!process.env.ANTHROPIC_API_KEY) {
-          log("ANTHROPIC_API_KEY not set — skipping draft generation", "warn");
+        } else if (!process.env.GROQ_API_KEY) {
+          log("GROQ_API_KEY not set — skipping draft generation", "warn");
         }
 
         await supabase

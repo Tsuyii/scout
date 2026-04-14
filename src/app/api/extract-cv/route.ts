@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { generateText, Output, type FilePart, type TextPart } from "ai";
-import { google } from "@ai-sdk/google";
+import { generateText, Output } from "ai";
+import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -45,30 +45,31 @@ export async function POST(request: Request) {
 
   const { data: { publicUrl } } = supabase.storage.from("cvs").getPublicUrl(fileName);
 
-  // Pass PDFs directly to Claude (native PDF support); fall back to text for other formats.
+  // Extract text: use Jina Reader for PDFs (no native deps), plain text otherwise
+  let cvText = "";
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-
-  let userContent: Array<TextPart | FilePart>;
-
   if (isPdf) {
-    userContent = [
-      { type: "file", data: fileBuffer, mediaType: "application/pdf" } satisfies FilePart,
-      { type: "text", text: "Extract the candidate's profile from this CV/resume. Be concise — skills as a list of keywords, education and experience as 1-3 sentence summaries." } satisfies TextPart,
-    ];
+    try {
+      const jinaRes = await fetch(`https://r.jina.ai/${publicUrl}`, {
+        headers: { Accept: "text/plain" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (jinaRes.ok) cvText = (await jinaRes.text()).slice(0, 8000);
+    } catch { cvText = ""; }
   } else {
-    let cvText = "";
-    try { cvText = await file.text(); } catch { cvText = `File: ${file.name}`; }
-    userContent = [
-      { type: "text", text: `Extract the candidate's profile from this CV/resume text.\nBe concise — skills as a list of keywords, education and experience as 1-3 sentence summaries.\n\nCV content:\n${cvText.slice(0, 8000)}` } satisfies TextPart,
-    ];
+    try { cvText = (await file.text()).slice(0, 8000); } catch { cvText = ""; }
+  }
+
+  if (!cvText.trim()) {
+    return NextResponse.json({ error: "Could not extract text from file." }, { status: 422 });
   }
 
   let profile;
   try {
     const result = await generateText({
-      model: google("gemini-2.0-flash"),
+      model: groq("llama-3.3-70b-versatile"),
       output: Output.object({ schema: profileSchema }),
-      messages: [{ role: "user", content: userContent }],
+      messages: [{ role: "user", content: `Extract the candidate's profile from this CV/resume text.\nBe concise — skills as a list of keywords, education and experience as 1-3 sentence summaries.\n\nCV content:\n${cvText}` }],
     });
     profile = result.output;
   } catch (err) {
