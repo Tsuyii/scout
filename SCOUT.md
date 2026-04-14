@@ -42,8 +42,12 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 #### Blocker
 - Gemini free tier quota = 0 (`limit: 0`) — likely a regional restriction (Morocco)
 - Both AI Studio keys tried, both fail with same error
-- **Fix next session: swap to Groq** (`@ai-sdk/groq`, `llama-3.3-70b-versatile`) — free, 14,400 req/day, no regional restrictions
-- Groq doesn't support PDF FilePart — need to handle PDFs via text extraction fallback for extract-cv
+- **Still deciding on fix** — options discussed:
+  1. Link card to Google Cloud gen-lang-client project → unlocks Gemini free tier (1500 req/day, no charges under normal use) — **recommended**
+  2. Anthropic API — native PDF support, clean swap back to original code, but no free credits anymore
+  3. OpenAI GPT-4o — free credits on new accounts, but PDF upload flow is more complex
+  4. Groq — genuinely free, no regional issues, but no native PDF support (user prefers to keep PDF quality)
+  - **Decision pending next session**
 
 #### Key technical discoveries (Session 4)
 - Gemini free tier not available in all regions — `limit: 0` means regional block, not just quota exhaustion
@@ -251,7 +255,7 @@ Tavily API (AI web search)
 - [x] Phase 6: Review & Send UI — full left/right layout, edit/regen/send, bulk send bar
 - [x] Phase 7: Gmail OAuth send integration — Nodemailer + token refresh in `/api/send-email`
 - [x] Phase 8: Wire up API keys + deploy to Vercel (https://internship-hunter-three.vercel.app)
-- [ ] Phase 9: Fix AI provider — swap Gemini → Groq (Gemini free tier quota = 0, likely regional restriction)
+- [ ] Phase 9: Fix AI provider — still deciding (see blocker notes in Session 4)
 
 #### Key technical discoveries (Session 2)
 - AI SDK v6: `tool()` uses `inputSchema` not `parameters` — must define schemas at module level for TS inference
