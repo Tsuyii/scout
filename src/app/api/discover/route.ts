@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { streamText, generateText, Output, tool, stepCountIs } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import { z } from "zod";
 
 export const maxDuration = 300; // 5 min — long-running discovery
@@ -243,7 +243,7 @@ export async function POST(request: Request) {
             : "Candidate: CS/ML student looking for internship";
 
           const { fullStream } = streamText({
-            model: anthropic("claude-sonnet-4.6"),
+            model: google("gemini-2.0-flash"),
             stopWhen: stepCountIs(50),
             system: `You are an internship discovery agent. Your job is to find ${remaining} companies in ${campaign.location} that would be good targets for a ${campaign.fields.join("/")} internship.
 ${profileContext}
@@ -398,7 +398,7 @@ For each company found: search → extract → find contact → save. Stop after
               // Email draft
               try {
                 const { output: emailDraft } = await generateText({
-                  model:  anthropic("claude-sonnet-4.6"),
+                  model:  google("gemini-2.0-flash"),
                   output: Output.object({ schema: emailDraftSchema }),
                   prompt: `Write a cold internship email in ${langLabel}. Max 150 words. Sound human, not template-like.
 
@@ -422,7 +422,7 @@ Return JSON: {"subject": "...", "body": "..."}`,
               // LinkedIn DM
               try {
                 const { output: dmDraft } = await generateText({
-                  model:  anthropic("claude-sonnet-4.6"),
+                  model:  google("gemini-2.0-flash"),
                   output: Output.object({ schema: dmDraftSchema }),
                   prompt: `Write a LinkedIn DM in ${langLabel}. Max 300 chars, 3 sentences. Compliment / intro / ask.
 

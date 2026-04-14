@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateText, Output, type FilePart, type TextPart } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   }
 
   const { output: profile } = await generateText({
-    model: anthropic("claude-sonnet-4.6"),
+    model: google("gemini-2.0-flash"),
     output: Output.object({ schema: profileSchema }),
     messages: [{ role: "user", content: userContent }],
   });

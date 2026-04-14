@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateText, Output } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
   if (platform === "email") {
     const { output } = await generateText({
-      model:  anthropic("claude-sonnet-4.6"),
+      model:  google("gemini-2.0-flash"),
       output: Output.object({ schema: emailSchema }),
       prompt: `Write a cold internship email in ${langLabel}. Max 150 words. Sound human, not template-like.
 
@@ -63,7 +63,7 @@ Return JSON: {"subject": "...", "body": "..."}`,
     body    = output?.body ?? "Draft generation failed.";
   } else {
     const { output } = await generateText({
-      model:  anthropic("claude-sonnet-4.6"),
+      model:  google("gemini-2.0-flash"),
       output: Output.object({ schema: dmSchema }),
       prompt: `Write a LinkedIn DM in ${langLabel}. Max 300 chars, 3 sentences: compliment / intro / ask.
 
