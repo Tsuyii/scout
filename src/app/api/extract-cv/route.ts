@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     });
 
   if (uploadError) {
-    return NextResponse.json({ error: "Failed to upload file" }, { status: 500 });
+    return NextResponse.json({ error: `Storage upload failed: ${uploadError.message}` }, { status: 500 });
   }
 
   const { data: { publicUrl } } = supabase.storage.from("cvs").getPublicUrl(fileName);
@@ -63,11 +63,17 @@ export async function POST(request: Request) {
     ];
   }
 
-  const { output: profile } = await generateText({
-    model: google("gemini-2.0-flash"),
-    output: Output.object({ schema: profileSchema }),
-    messages: [{ role: "user", content: userContent }],
-  });
+  let profile;
+  try {
+    const result = await generateText({
+      model: google("gemini-2.0-flash"),
+      output: Output.object({ schema: profileSchema }),
+      messages: [{ role: "user", content: userContent }],
+    });
+    profile = result.output;
+  } catch (err) {
+    return NextResponse.json({ error: `AI extraction failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 });
+  }
 
   return NextResponse.json({ url: publicUrl, profile });
 }
