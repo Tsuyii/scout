@@ -233,10 +233,10 @@ export async function POST(request: Request) {
           }
         }
 
-        // ── Tier 2: Cold path — Claude AI agent with Tavily ────────────────
-        if (campaign.mode === "hybrid" && found < target && process.env.GROQ_API_KEY) {
-          log("Switching to AI cold search (Claude + Tavily)...", "info");
-          const remaining = target - found;
+        // ── Tier 2: Cold path — AI agent (always runs in hybrid to find contacts) ──
+        if (campaign.mode === "hybrid" && process.env.GROQ_API_KEY) {
+          log("Switching to AI cold search for contacts...", "info");
+          const remaining = Math.max(target - found, 5);
 
           const profileContext = profile
             ? `Candidate: ${profile.name ?? "CS/ML student"}, skills: ${profile.skills?.join(", ") ?? "programming"}`
