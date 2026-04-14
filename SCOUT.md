@@ -15,14 +15,30 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 
 ## Current Status
 
-**Phase:** Deployed to Vercel — blocked on Gemini free tier quota (regional issue)  
-**Last updated:** 2026-04-14  
+**Phase:** Deployed and fully working — CV upload, extraction, and discovery all unblocked  
+**Last updated:** 2026-04-15  
 **Repo:** https://github.com/Tsuyii/scout  
 **Launch command:** `scout` (from any terminal)
 
 ---
 
 ## What's Been Done
+
+### Session 5 — 2026-04-15 (Groq swap + CV extraction fixed)
+
+#### Done
+- Swapped Gemini → Groq (`llama-3.3-70b-versatile`) across all 3 routes: extract-cv, discover, draft
+- Replaced `pdf-parse` and `unpdf` (both fail in Vercel serverless due to `@napi-rs/canvas`) with Jina Reader — PDF is uploaded to Supabase first, then Jina fetches text from the public URL (no native deps)
+- Fixed `Output.object` / `json_schema` incompatibility with Groq — switched to plain `generateText` + JSON-in-prompt + regex extraction, works with any model
+- Fixed stale `ANTHROPIC_API_KEY` guards → `GROQ_API_KEY` in discover route
+- CV upload confirmed working in production
+
+#### Key technical discoveries (Session 5)
+- `pdf-parse` and `unpdf` both import `@napi-rs/canvas` which requires native binaries — breaks in Vercel serverless. Use Jina Reader on a public URL instead.
+- Groq `llama-3.3-70b-versatile` does not support `json_schema` response format (used by `Output.object` in AI SDK v6). Use plain text generation + `text.match(/\{[\s\S]*\}/)` + `JSON.parse`.
+- `generateObject` was removed in AI SDK v6 — only `generateText + Output.object` exists, but that hits the json_schema issue above with Groq.
+
+---
 
 ### Session 4 — 2026-04-14 (Deploy + Fixes)
 
