@@ -34,9 +34,11 @@ export function ProfileForm({ user, initialProfile }: ProfileFormProps) {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [autoFill, setAutoFill] = useState(true);
 
   function handleCvExtracted(url: string, profile: ExtractedProfile) {
     setCvUrl(url);
+    if (!autoFill) return;
     if (profile.name && !name) setName(profile.name);
     if (profile.skills?.length) setSkills(profile.skills);
     if (profile.education) setEducation(profile.education);
@@ -71,9 +73,32 @@ export function ProfileForm({ user, initialProfile }: ProfileFormProps) {
     <form onSubmit={handleSave} className="space-y-8">
       {/* CV Upload */}
       <section>
-        <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-3">
-          <span className="text-neon">01</span> — CV / Resume
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
+            <span className="text-neon">01</span> — CV / Resume
+          </h2>
+          <button
+            type="button"
+            onClick={() => setAutoFill((v) => !v)}
+            className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span>{autoFill ? "AI AUTO-FILL ON" : "AI AUTO-FILL OFF"}</span>
+            <div className={[
+              "w-8 h-4 rounded-full transition-colors relative",
+              autoFill ? "bg-neon/80" : "bg-border",
+            ].join(" ")}>
+              <div className={[
+                "absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all",
+                autoFill ? "left-4.5" : "left-0.5",
+              ].join(" ")} />
+            </div>
+          </button>
+        </div>
+        {autoFill && (
+          <p className="text-[10px] font-mono text-muted-foreground/60 mb-3">
+            Profile fields will be filled automatically from your CV after upload.
+          </p>
+        )}
         <CvUpload currentUrl={cvUrl} onUploadComplete={handleCvExtracted} />
       </section>
 

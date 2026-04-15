@@ -24,19 +24,22 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 
 ## What's Been Done
 
-### Session 5 — 2026-04-15 (Groq swap + CV extraction fixed)
+### Session 5 — 2026-04-15 (Groq swap + CV extraction fixed + UX improvements)
 
 #### Done
 - Swapped Gemini → Groq (`llama-3.3-70b-versatile`) across all 3 routes: extract-cv, discover, draft
 - Replaced `pdf-parse` and `unpdf` (both fail in Vercel serverless due to `@napi-rs/canvas`) with Jina Reader — PDF is uploaded to Supabase first, then Jina fetches text from the public URL (no native deps)
 - Fixed `Output.object` / `json_schema` incompatibility with Groq — switched to plain `generateText` + JSON-in-prompt + regex extraction, works with any model
 - Fixed stale `ANTHROPIC_API_KEY` guards → `GROQ_API_KEY` in discover route
-- CV upload confirmed working in production
+- Fixed hybrid mode: cold search agent now always runs (was gated on `found < target`, so job boards filling quota skipped agent entirely → no contacts → no drafts)
+- Sidebar: campaigns expand into sub-items (location · field, colored status dot) when on campaigns pages, linking to discover or review
+- Profile: AI auto-fill toggle on CV upload section — ON fills all profile fields from CV, OFF just stores the file
 
 #### Key technical discoveries (Session 5)
 - `pdf-parse` and `unpdf` both import `@napi-rs/canvas` which requires native binaries — breaks in Vercel serverless. Use Jina Reader on a public URL instead.
 - Groq `llama-3.3-70b-versatile` does not support `json_schema` response format (used by `Output.object` in AI SDK v6). Use plain text generation + `text.match(/\{[\s\S]*\}/)` + `JSON.parse`.
 - `generateObject` was removed in AI SDK v6 — only `generateText + Output.object` exists, but that hits the json_schema issue above with Groq.
+- Hybrid discovery bug: job boards can fill the company quota, causing `found < target` to be false and skipping the cold search agent. Fix: always run agent in hybrid mode with `Math.max(target - found, 5)`.
 
 ---
 
