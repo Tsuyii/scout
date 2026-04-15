@@ -36,10 +36,10 @@ export function ProfileForm({ user, initialProfile }: ProfileFormProps) {
   const [saved, setSaved] = useState(false);
   const [autoFill, setAutoFill] = useState(true);
 
-  function handleCvExtracted(url: string, profile: ExtractedProfile) {
+  function handleCvExtracted(url: string, profile: ExtractedProfile | null) {
     setCvUrl(url);
-    if (!autoFill) return;
-    if (profile.name && !name) setName(profile.name);
+    if (!autoFill || !profile) return;
+    if (profile.name) setName(profile.name);
     if (profile.skills?.length) setSkills(profile.skills);
     if (profile.education) setEducation(profile.education);
     if (profile.experience) setExperience(profile.experience);

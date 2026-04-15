@@ -68,9 +68,21 @@ export async function POST(request: Request) {
   try {
     const { text } = await generateText({
       model: groq("llama-3.3-70b-versatile"),
-      prompt: `Extract the candidate's profile from this CV/resume text. Return ONLY a JSON object with these fields: name (string), skills (array of strings), education (string), experience (string), availability (string). No markdown, no explanation, just JSON.\n\nCV content:\n${cvText}`,
+      prompt: `You are a CV parser. Extract information from the CV text below and return a single JSON object. No markdown, no code fences, no explanation — just the raw JSON object.
+
+Required fields:
+- name: full name of the candidate (string)
+- skills: list of technical skills, languages, frameworks (array of strings)
+- education: degree, university, year (1-2 sentences)
+- experience: work experience and projects (2-3 sentences)
+- availability: internship availability period if mentioned, otherwise ""
+
+CV text:
+${cvText}`,
     });
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    // Strip markdown code fences if model ignored instructions
+    const cleaned = text.replace(/```(?:json)?\s*/gi, "").replace(/```/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     profile = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
   } catch (err) {
     return NextResponse.json({ error: `AI extraction failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 });
