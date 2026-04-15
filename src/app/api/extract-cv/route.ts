@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       const { data: signedData } = await supabase.storage.from("cvs").createSignedUrl(fileName, 120);
       const jinaUrl = signedData?.signedUrl;
       if (jinaUrl) {
-        const jinaRes = await fetch(`https://r.jina.ai/${jinaUrl}`, {
+        const jinaRes = await fetch(`https://r.jina.ai/${encodeURIComponent(jinaUrl)}`, {
           headers: { Accept: "text/plain" },
           signal: AbortSignal.timeout(15000),
         });

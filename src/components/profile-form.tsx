@@ -34,6 +34,7 @@ export function ProfileForm({ userId, profile, onSaved, onDeleted, onCancel, can
   const [autoFill, setAutoFill] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   function handleCvExtracted(url: string, extracted: ExtractedProfile | null) {
@@ -49,29 +50,31 @@ export function ProfileForm({ userId, profile, onSaved, onDeleted, onCancel, can
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setSaveError(null);
     const now = new Date().toISOString();
 
     if (profile?.id) {
-      // If setting as default, clear other profiles first
       if (isDefault) {
         await supabase.from("profiles").update({ is_default: false }).eq("user_id", userId).neq("id", profile.id);
       }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .update({ label: label || "Profile", name, skills, education, experience, availability, cv_url: cvUrl, is_default: isDefault, updated_at: now })
         .eq("id", profile.id)
         .select()
         .single();
+      if (error) { setSaveError(error.message); setSaving(false); return; }
       if (data) onSaved(data as ProfileRow);
     } else {
       if (isDefault) {
         await supabase.from("profiles").update({ is_default: false }).eq("user_id", userId);
       }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .insert({ user_id: userId, label: label || "New Profile", name, skills, education, experience, availability, cv_url: cvUrl, is_default: isDefault, created_at: now, updated_at: now })
         .select()
         .single();
+      if (error) { setSaveError(error.message); setSaving(false); return; }
       if (data) onSaved(data as ProfileRow);
     }
 
@@ -188,6 +191,13 @@ export function ProfileForm({ userId, profile, onSaved, onDeleted, onCancel, can
           Default profile for new campaigns
         </span>
       </label>
+
+      {/* Save error */}
+      {saveError && (
+        <p className="text-xs font-mono text-destructive border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <span className="font-bold">ERR</span> {saveError}
+        </p>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-3 pt-1">
