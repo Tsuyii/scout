@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,217 +9,213 @@ import { Textarea } from "@/components/ui/textarea";
 import { CvUpload, type ExtractedProfile } from "@/components/cv-upload";
 import { SkillTags } from "@/components/skill-tags";
 import { Separator } from "@/components/ui/separator";
-import type { UserRow } from "@/types/database";
+import type { ProfileRow } from "@/types/database";
 
 interface ProfileFormProps {
-  user: User;
-  initialProfile: UserRow | null;
+  userId: string;
+  profile: ProfileRow | null; // null = creating new
+  onSaved: (profile: ProfileRow) => void;
+  onDeleted?: (id: string) => void;
+  onCancel?: () => void;
+  canDelete?: boolean;
 }
 
-export function ProfileForm({ user, initialProfile }: ProfileFormProps) {
+export function ProfileForm({ userId, profile, onSaved, onDeleted, onCancel, canDelete }: ProfileFormProps) {
   const supabase = createClient();
 
-  const [name, setName] = useState(initialProfile?.name ?? user.user_metadata?.name ?? "");
-  const [skills, setSkills] = useState<string[]>(initialProfile?.skills ?? []);
-  const [education, setEducation] = useState(initialProfile?.education ?? "");
-  const [experience, setExperience] = useState(initialProfile?.experience ?? "");
-  const [availability, setAvailability] = useState(initialProfile?.availability ?? "");
-  const [cvUrl, setCvUrl] = useState<string | null>(initialProfile?.cv_url ?? null);
-  const [gmailAppPassword, setGmailAppPassword] = useState<string>(() => {
-    try {
-      const t = initialProfile?.gmail_token ? JSON.parse(initialProfile.gmail_token) as { app_password?: string } : null;
-      return t?.app_password ?? "";
-    } catch { return ""; }
-  });
+  const [label, setLabel] = useState(profile?.label ?? "");
+  const [name, setName] = useState(profile?.name ?? "");
+  const [skills, setSkills] = useState<string[]>(profile?.skills ?? []);
+  const [education, setEducation] = useState(profile?.education ?? "");
+  const [experience, setExperience] = useState(profile?.experience ?? "");
+  const [availability, setAvailability] = useState(profile?.availability ?? "");
+  const [cvUrl, setCvUrl] = useState<string | null>(profile?.cv_url ?? null);
+  const [isDefault, setIsDefault] = useState(profile?.is_default ?? false);
+  const [autoFill, setAutoFill] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [autoFill, setAutoFill] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
-  function handleCvExtracted(url: string, profile: ExtractedProfile | null) {
+  function handleCvExtracted(url: string, extracted: ExtractedProfile | null) {
     setCvUrl(url);
-    if (!autoFill || !profile) return;
-    if (profile.name) setName(profile.name);
-    if (profile.skills?.length) setSkills(profile.skills);
-    if (profile.education) setEducation(profile.education);
-    if (profile.experience) setExperience(profile.experience);
-    if (profile.availability) setAvailability(profile.availability);
+    if (!autoFill || !extracted) return;
+    if (extracted.name) setName(extracted.name);
+    if (extracted.skills?.length) setSkills(extracted.skills);
+    if (extracted.education) setEducation(extracted.education);
+    if (extracted.experience) setExperience(extracted.experience);
+    if (extracted.availability) setAvailability(extracted.availability);
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    setSaved(false);
+    const now = new Date().toISOString();
 
-    await supabase.from("users").upsert({
-      id: user.id,
-      email: user.email!,
-      name,
-      skills,
-      education,
-      experience,
-      availability,
-      cv_url: cvUrl,
-      gmail_token: gmailAppPassword ? JSON.stringify({ app_password: gmailAppPassword }) : null,
-      updated_at: new Date().toISOString(),
-    });
+    if (profile?.id) {
+      // If setting as default, clear other profiles first
+      if (isDefault) {
+        await supabase.from("profiles").update({ is_default: false }).eq("user_id", userId).neq("id", profile.id);
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .update({ label: label || "Profile", name, skills, education, experience, availability, cv_url: cvUrl, is_default: isDefault, updated_at: now })
+        .eq("id", profile.id)
+        .select()
+        .single();
+      if (data) onSaved(data as ProfileRow);
+    } else {
+      if (isDefault) {
+        await supabase.from("profiles").update({ is_default: false }).eq("user_id", userId);
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .insert({ user_id: userId, label: label || "New Profile", name, skills, education, experience, availability, cv_url: cvUrl, is_default: isDefault, created_at: now, updated_at: now })
+        .select()
+        .single();
+      if (data) onSaved(data as ProfileRow);
+    }
 
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
 
+  async function handleDelete() {
+    if (!profile?.id) return;
+    setDeleting(true);
+    await supabase.from("profiles").delete().eq("id", profile.id);
+    onDeleted?.(profile.id);
+  }
+
   return (
-    <form onSubmit={handleSave} className="space-y-8">
+    <form onSubmit={handleSave} className="space-y-6 pt-4">
+      {/* Label */}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
+          Profile Name
+        </Label>
+        <Input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. SWE Focus, ML Research, Default"
+          className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30"
+        />
+      </div>
+
+      <Separator className="bg-border" />
+
       {/* CV Upload */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-            <span className="text-neon">01</span> — CV / Resume
-          </h2>
+          <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
+            <span className="text-neon">CV</span> / Resume
+          </h3>
           <button
             type="button"
             onClick={() => setAutoFill((v) => !v)}
             className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
           >
             <span>{autoFill ? "AI AUTO-FILL ON" : "AI AUTO-FILL OFF"}</span>
-            <div className={[
-              "w-8 h-4 rounded-full transition-colors relative",
-              autoFill ? "bg-neon/80" : "bg-border",
-            ].join(" ")}>
-              <div className={[
-                "absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all",
-                autoFill ? "left-4.5" : "left-0.5",
-              ].join(" ")} />
+            <div className={["w-8 h-4 rounded-full transition-colors relative", autoFill ? "bg-neon/80" : "bg-border"].join(" ")}>
+              <div className={["absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all", autoFill ? "left-[18px]" : "left-0.5"].join(" ")} />
             </div>
           </button>
         </div>
-        {autoFill && (
-          <p className="text-[10px] font-mono text-muted-foreground/60 mb-3">
-            Profile fields will be filled automatically from your CV after upload.
-          </p>
-        )}
         <CvUpload currentUrl={cvUrl} onUploadComplete={handleCvExtracted} />
       </section>
 
-      <Separator className="bg-border" />
-
       {/* Basic info */}
-      <section>
-        <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-4">
-          <span className="text-neon">02</span> — Basic Info
-        </h2>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-              Name
-            </Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your full name"
-              className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-              Availability
-            </Label>
-            <Input
-              value={availability}
-              onChange={(e) => setAvailability(e.target.value)}
-              placeholder="e.g. June–September 2026, full-time"
-              className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30"
-            />
-          </div>
-        </div>
-      </section>
-
-      <Separator className="bg-border" />
-
-      {/* Skills */}
-      <section>
-        <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-4">
-          <span className="text-neon">03</span> — Skills
-        </h2>
-        <SkillTags skills={skills} onChange={setSkills} />
-      </section>
-
-      <Separator className="bg-border" />
-
-      {/* Education & Experience */}
-      <section>
-        <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-4">
-          <span className="text-neon">04</span> — Background
-        </h2>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-              Education
-            </Label>
-            <Textarea
-              value={education}
-              onChange={(e) => setEducation(e.target.value)}
-              placeholder="e.g. 3rd year CS student at École Polytechnique..."
-              rows={3}
-              className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30 resize-none"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-              Experience
-            </Label>
-            <Textarea
-              value={experience}
-              onChange={(e) => setExperience(e.target.value)}
-              placeholder="e.g. Built X at Y, contributed to Z open source project..."
-              rows={4}
-              className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30 resize-none"
-            />
-          </div>
-        </div>
-      </section>
-
-      <Separator className="bg-border" />
-
-      {/* Gmail */}
-      <section>
-        <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-4">
-          <span className="text-neon">05</span> — Gmail
-        </h2>
-        <div className="space-y-2">
-          <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-            App Password
-          </Label>
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Name</Label>
           <Input
-            type="password"
-            value={gmailAppPassword}
-            onChange={(e) => setGmailAppPassword(e.target.value)}
-            placeholder="xxxx xxxx xxxx xxxx"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your full name"
             className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30"
           />
-          <p className="text-xs font-mono text-muted-foreground">
-            Generate at{" "}
-            <span className="text-neon">myaccount.google.com → Security → App Passwords</span>
-            {" "}(requires 2FA). Used to send emails from your Gmail account.
-          </p>
         </div>
-      </section>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Availability</Label>
+          <Input
+            value={availability}
+            onChange={(e) => setAvailability(e.target.value)}
+            placeholder="e.g. June–September 2026, full-time"
+            className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30"
+          />
+        </div>
+      </div>
 
-      {/* Save */}
-      <div className="flex items-center gap-3 pt-2">
+      {/* Skills */}
+      <div className="space-y-2">
+        <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Skills</Label>
+        <SkillTags skills={skills} onChange={setSkills} />
+      </div>
+
+      {/* Background */}
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Education</Label>
+          <Textarea
+            value={education}
+            onChange={(e) => setEducation(e.target.value)}
+            placeholder="e.g. 3rd year CS student at École Polytechnique..."
+            rows={2}
+            className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30 resize-none"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Experience</Label>
+          <Textarea
+            value={experience}
+            onChange={(e) => setExperience(e.target.value)}
+            placeholder="e.g. Built X at Y, contributed to Z open source project..."
+            rows={3}
+            className="bg-input border-border font-mono text-sm focus:border-neon focus:ring-1 focus:ring-neon/30 resize-none"
+          />
+        </div>
+      </div>
+
+      {/* Default toggle */}
+      <label className="flex items-center gap-3 cursor-pointer select-none">
+        <div
+          onClick={() => setIsDefault((v) => !v)}
+          className={["w-8 h-4 rounded-full transition-colors relative cursor-pointer", isDefault ? "bg-neon/80" : "bg-border"].join(" ")}
+        >
+          <div className={["absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all", isDefault ? "left-[18px]" : "left-0.5"].join(" ")} />
+        </div>
+        <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+          Default profile for new campaigns
+        </span>
+      </label>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3 pt-1">
         <Button
           type="submit"
           disabled={saving}
           className="bg-neon text-background font-mono font-semibold text-sm hover:bg-neon/90 glow-neon-sm"
         >
-          {saving ? "SAVING..." : saved ? "SAVED ✓" : "SAVE PROFILE →"}
+          {saving ? "SAVING..." : saved ? "SAVED ✓" : profile?.id ? "SAVE →" : "CREATE →"}
         </Button>
-        {saved && (
-          <span className="text-xs font-mono text-neon animate-fade-in">
-            Profile updated
-          </span>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+          >
+            cancel
+          </button>
+        )}
+        {canDelete && profile?.id && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="ml-auto text-xs font-mono text-destructive/70 hover:text-destructive transition-colors"
+          >
+            {deleting ? "deleting..." : "delete profile"}
+          </button>
         )}
       </div>
     </form>

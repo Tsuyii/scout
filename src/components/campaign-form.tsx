@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Zap, Sliders, Plus, X } from "lucide-react";
+import { MapPin, Zap, Sliders, Plus, User } from "lucide-react";
+import type { ProfileRow } from "@/types/database";
 
 const FIELD_OPTIONS = ["SWE", "DS/ML", "Backend", "Frontend", "Research", "DevOps"];
 const LANGUAGE_OPTIONS = [
@@ -11,8 +12,15 @@ const LANGUAGE_OPTIONS = [
   { code: "es", label: "Spanish" },
 ];
 
-export function CampaignForm() {
+interface CampaignFormProps {
+  profiles: ProfileRow[];
+}
+
+export function CampaignForm({ profiles }: CampaignFormProps) {
   const router = useRouter();
+  const defaultProfile = profiles.find((p) => p.is_default) ?? profiles[0];
+
+  const [profileId, setProfileId] = useState<string>(defaultProfile?.id ?? "");
   const [location, setLocation] = useState("");
   const [fields, setFields] = useState<string[]>(["SWE"]);
   const [languages, setLanguages] = useState<string[]>(["en"]);
@@ -51,6 +59,7 @@ export function CampaignForm() {
         languages,
         mode,
         target_count: targetCount,
+        profile_id: profileId || null,
         manual_companies: manualCompanies
           .split("\n")
           .map((s) => s.trim())
@@ -71,6 +80,38 @@ export function CampaignForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+
+      {/* Profile selector */}
+      {profiles.length > 0 && (
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 font-mono text-xs text-muted-foreground tracking-widest uppercase">
+            <User className="w-3.5 h-3.5" />
+            Profile
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {profiles.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setProfileId(p.id)}
+                className={[
+                  "px-3 py-1.5 font-mono text-xs tracking-wider border transition-all",
+                  profileId === p.id
+                    ? "border-neon bg-neon/10 text-neon glow-neon-sm"
+                    : "border-border text-muted-foreground hover:border-neon/40 hover:text-foreground",
+                ].join(" ")}
+              >
+                {p.label}
+                {p.is_default && <span className="ml-1.5 opacity-50">★</span>}
+              </button>
+            ))}
+          </div>
+          <p className="font-mono text-[10px] text-muted-foreground/50">
+            SCOUT uses this profile when drafting outreach.
+          </p>
+        </div>
+      )}
+
       {/* Location */}
       <div className="space-y-2">
         <label className="flex items-center gap-2 font-mono text-xs text-muted-foreground tracking-widest uppercase">

@@ -59,10 +59,53 @@ export interface Database {
         };
         Relationships: GenericRelationship[];
       };
+      profiles: {
+        Row: {
+          id: string;
+          user_id: string;
+          label: string;
+          name: string | null;
+          skills: string[];
+          education: string | null;
+          experience: string | null;
+          availability: string | null;
+          cv_url: string | null;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          label?: string;
+          name?: string | null;
+          skills?: string[];
+          education?: string | null;
+          experience?: string | null;
+          availability?: string | null;
+          cv_url?: string | null;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          label?: string;
+          name?: string | null;
+          skills?: string[];
+          education?: string | null;
+          experience?: string | null;
+          availability?: string | null;
+          cv_url?: string | null;
+          is_default?: boolean;
+          updated_at?: string;
+        };
+        Relationships: GenericRelationship[];
+      };
       campaigns: {
         Row: {
           id: string;
           user_id: string;
+          profile_id: string | null;
           location: string;
           fields: string[];
           languages: string[];
@@ -75,6 +118,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
+          profile_id?: string | null;
           location: string;
           fields: string[];
           languages?: string[];
@@ -85,6 +129,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: {
+          profile_id?: string | null;
           location?: string;
           fields?: string[];
           languages?: string[];
@@ -211,6 +256,7 @@ export interface Database {
 
 // Convenience row types
 export type UserRow = Database["public"]["Tables"]["users"]["Row"];
+export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type CampaignRow = Database["public"]["Tables"]["campaigns"]["Row"];
 export type CompanyRow = Database["public"]["Tables"]["companies"]["Row"];
 export type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];

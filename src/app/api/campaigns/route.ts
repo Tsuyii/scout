@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     languages?: string[];
     mode: "active" | "hybrid";
     target_count: number;
+    profile_id?: string | null;
     manual_companies?: string[];
   };
 
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
     .from("campaigns")
     .insert({
       user_id:      user.id,
+      profile_id:   body.profile_id ?? null,
       location:     body.location.trim(),
       fields:       body.fields,
       languages:    body.languages ?? ["en"],

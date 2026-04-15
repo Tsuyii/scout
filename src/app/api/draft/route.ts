@@ -22,14 +22,26 @@ export async function POST(request: Request) {
     companies: { name: string; website: string | null; description: string | null; campaigns: { location: string; fields: string[]; languages: string[] } | null } | null;
   };
 
-  const [{ data: rawContact }, { data: profile }] = await Promise.all([
+  const [{ data: rawContact }, { data: userProfile }, { data: campaign }] = await Promise.all([
     supabase
       .from("contacts")
       .select("*, companies!inner(campaign_id, name, website, description, campaigns!inner(location, fields, languages))")
       .eq("id", contactId)
       .single(),
     supabase.from("users").select("*").eq("id", user.id).single(),
+    supabase.from("campaigns").select("profile_id").eq("id", campaignId).single(),
   ]);
+
+  // Use the campaign's linked profile if set, otherwise fall back to the user row
+  let profile = userProfile;
+  if (campaign?.profile_id) {
+    const { data: linkedProfile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", campaign.profile_id)
+      .single();
+    if (linkedProfile) profile = linkedProfile as typeof userProfile;
+  }
 
   if (!rawContact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
   const contact = rawContact as unknown as ContactWithJoin;

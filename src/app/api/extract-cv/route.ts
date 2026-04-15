@@ -50,11 +50,16 @@ export async function POST(request: Request) {
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   if (isPdf) {
     try {
-      const jinaRes = await fetch(`https://r.jina.ai/${publicUrl}`, {
-        headers: { Accept: "text/plain" },
-        signal: AbortSignal.timeout(15000),
-      });
-      if (jinaRes.ok) cvText = (await jinaRes.text()).slice(0, 8000);
+      // Bucket is private — must use a signed URL so Jina can actually fetch the file
+      const { data: signedData } = await supabase.storage.from("cvs").createSignedUrl(fileName, 120);
+      const jinaUrl = signedData?.signedUrl;
+      if (jinaUrl) {
+        const jinaRes = await fetch(`https://r.jina.ai/${jinaUrl}`, {
+          headers: { Accept: "text/plain" },
+          signal: AbortSignal.timeout(15000),
+        });
+        if (jinaRes.ok) cvText = (await jinaRes.text()).slice(0, 8000);
+      }
     } catch { cvText = ""; }
   } else {
     try { cvText = (await file.text()).slice(0, 8000); } catch { cvText = ""; }

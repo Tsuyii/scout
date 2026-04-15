@@ -9,6 +9,12 @@ export default async function NewCampaignPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at");
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
       <div className="mb-8">
@@ -19,7 +25,7 @@ export default async function NewCampaignPage() {
           Configure your target and SCOUT will find companies + draft outreach.
         </p>
       </div>
-      <CampaignForm />
+      <CampaignForm profiles={profiles ?? []} />
     </div>
   );
 }

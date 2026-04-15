@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ProfileForm } from "@/components/profile-form";
+import { ProfileManager } from "@/components/profile-manager";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -10,11 +10,10 @@ export default async function ProfilePage() {
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const [{ data: userRow }, { data: profiles }] = await Promise.all([
+    supabase.from("users").select("*").eq("id", user.id).single(),
+    supabase.from("profiles").select("*").eq("user_id", user.id).order("created_at"),
+  ]);
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
@@ -27,7 +26,7 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <ProfileForm user={user} initialProfile={profile} />
+      <ProfileManager user={user} initialProfiles={profiles ?? []} userRow={userRow} />
     </div>
   );
 }
