@@ -35,11 +35,14 @@ A webapp that automates internship hunting end-to-end. Upload your CV, specify a
 - Sidebar: campaigns expand into sub-items (location · field, colored status dot) when on campaigns pages, linking to discover or review
 - Profile: AI auto-fill toggle on CV upload section — ON fills all profile fields from CV, OFF just stores the file
 
+- Fixed CV auto-fill: Groq was wrapping JSON in markdown code fences (` ```json ``` `) despite instructions — strip them before `JSON.parse`. Also removed `!name` guard so auto-fill always overwrites all fields when toggled on.
+
 #### Key technical discoveries (Session 5)
 - `pdf-parse` and `unpdf` both import `@napi-rs/canvas` which requires native binaries — breaks in Vercel serverless. Use Jina Reader on a public URL instead.
 - Groq `llama-3.3-70b-versatile` does not support `json_schema` response format (used by `Output.object` in AI SDK v6). Use plain text generation + `text.match(/\{[\s\S]*\}/)` + `JSON.parse`.
 - `generateObject` was removed in AI SDK v6 — only `generateText + Output.object` exists, but that hits the json_schema issue above with Groq.
 - Hybrid discovery bug: job boards can fill the company quota, causing `found < target` to be false and skipping the cold search agent. Fix: always run agent in hybrid mode with `Math.max(target - found, 5)`.
+- Groq models often return JSON wrapped in markdown code fences even when explicitly told not to. Always strip ` ```json ``` ` before parsing.
 
 ---
 
