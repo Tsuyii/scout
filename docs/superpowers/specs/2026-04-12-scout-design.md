@@ -37,8 +37,8 @@ Both paths feed into:
 | UI | Tailwind CSS + shadcn/ui | Fast iteration, consistent components |
 | Email send | Gmail OAuth (Nodemailer) | Actually sends emails without SMTP setup |
 | Email find | Hunter.io API | Reliable email finder by domain + name |
-| Job boards | Adzuna API | Free tier, good coverage |
-| Web search | Tavily API | Optimized for AI agent use |
+| Job boards | Adzuna · Remotive · Arbeitnow · The Muse · Remoteok · Jobicy | 6 sources, most free/no-key |
+| Web search | Tavily API (primary) + Serper (fallback) | Tavily optimized for AI agents, Serper = Google results |
 | Visual style | Dark terminal — Design 1 (Stitch) | Approved by user |
 
 ---
@@ -49,10 +49,17 @@ Both paths feed into:
 - `id`, `email`, `created_at`
 - `name`, `skills[]`, `education`, `experience`, `availability`
 - `cv_url` (Supabase Storage)
-- `gmail_token` (encrypted OAuth token)
+- `gmail_token` (encrypted app password, global)
+
+### `profiles`
+- `id`, `user_id`, `created_at`
+- `label` (e.g. "SWE Focus", "ML Research")
+- `name`, `skills[]`, `education`, `experience`, `availability`
+- `cv_url` (per-profile CV)
+- `is_default` (bool — used when campaign has no profile selected)
 
 ### `campaigns`
-- `id`, `user_id`, `created_at`
+- `id`, `user_id`, `profile_id` (nullable FK → profiles), `created_at`
 - `location` (string, e.g. "Paris, France")
 - `fields[]` (e.g. ["SWE", "DS/ML"])
 - `mode` ("active" | "hybrid")
@@ -84,20 +91,23 @@ Both paths feed into:
 
 ## UI Flow
 
-### Screen 1 — Profile (one-time setup)
-- Drag-and-drop CV upload (PDF/DOC/DOCX) → stored in Supabase Storage
-- AI extracts: name, email, skills, education, experience, availability
-- User can edit extracted fields and add/remove skill tags
-- Connect Gmail via OAuth and enable LinkedIn (copy-to-clipboard mode)
+### Screen 1 — Profile (multi-profile manager)
+- Gmail app password stored globally (not per-profile)
+- Multiple named profiles (e.g. "SWE Focus", "ML Research", "Default")
+- Each profile: drag-and-drop CV upload → AI auto-fills name, skills, education, experience, availability via signed URL + Groq
+- User can edit extracted fields, add/remove skill tags, set a profile as default
+- Create / expand / delete profiles inline — accordion UI
 - Persists across sessions — no re-upload needed
 
 ### Screen 2 — New Campaign
+- **Profile selector** at top — pill chips for each saved profile (★ marks default)
 - Location input (free text: city, country, "Remote")
 - Field chips: SWE, DS/ML, Backend, Frontend, Research, DevOps (multi-select)
 - Discovery mode toggle: Active Only vs Hybrid (recommended)
 - Company count slider: 5–50
 - Optional manual company list (paste names)
 - "Launch Campaign" button → navigates to Discovery screen
+- Selected profile stored on campaign, used for all draft generation
 
 ### Screen 3 — Discovery (real-time streaming)
 - AI SDK `streamText` streams progress to the UI via Server-Sent Events
